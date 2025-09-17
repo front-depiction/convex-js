@@ -20,8 +20,8 @@ export async function finalizeConfiguration(
   if (envVarWrite !== null) {
     logFinishedStep(
       `${messageForDeploymentType(options.deploymentType, options.url)} and saved its:\n` +
-        `    name as CONVEX_DEPLOYMENT to .env.local\n` +
-        `    URL as ${envVarWrite.envVar} to ${envVarWrite.envFile}`,
+      `    name as CONVEX_DEPLOYMENT to .env.local\n` +
+      `    URL as ${envVarWrite.envVar} to ${envVarWrite.envFile}`,
     );
   } else if (options.changedDeploymentEnvVar) {
     logFinishedStep(
@@ -48,8 +48,8 @@ export async function finalizeConfiguration(
     });
     logMessage(
       `\nWrite your Convex functions in ${chalk.bold(options.functionsPath)}\n` +
-        "Give us feedback at https://convex.dev/community or support@convex.dev\n" +
-        `View the Convex dashboard at ${dashboardUrl}\n`,
+      "Give us feedback at https://convex.dev/community or support@convex.dev\n" +
+      `View the Convex dashboard at ${await dashboardUrl}\n`,
     );
   }
 }

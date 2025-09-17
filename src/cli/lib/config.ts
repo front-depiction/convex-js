@@ -269,8 +269,8 @@ export async function configFilepath(ctx: Context): Promise<string> {
   const wrongLocation = path.join("src", configFn);
 
   // Allow either location, but not both.
-  const preferredLocationExists = ctx.fs.exists(preferredLocation);
-  const wrongLocationExists = ctx.fs.exists(wrongLocation);
+  const preferredLocationExists = await ctx.fs.exists(preferredLocation);
+  const wrongLocationExists = await ctx.fs.exists(wrongLocation);
   if (preferredLocationExists && wrongLocationExists) {
     const message = `${chalk.red(`Error: both ${preferredLocation} and ${wrongLocation} files exist!`)}\nConsolidate these and remove ${wrongLocation}.`;
     return await ctx.crash({
@@ -300,7 +300,7 @@ export async function readProjectConfig(ctx: Context): Promise<{
   projectConfig: ProjectConfig;
   configPath: string;
 }> {
-  if (!ctx.fs.exists("convex.json")) {
+  if (!await ctx.fs.exists("convex.json")) {
     // create-react-app bans imports from outside of src, so we can just
     // put the functions directory inside of src/ to work around this issue.
     const packages = await loadPackageJson(ctx);
@@ -327,7 +327,7 @@ export async function readProjectConfig(ctx: Context): Promise<{
   try {
     projectConfig = await parseProjectConfig(
       ctx,
-      JSON.parse(ctx.fs.readUtf8File(configPath)),
+      JSON.parse(await ctx.fs.readUtf8File(configPath)),
     );
   } catch (err) {
     if (err instanceof ParseError || err instanceof SyntaxError) {
@@ -528,14 +528,14 @@ export async function upgradeOldAuthInfoToAuthConfig(
   if (config.authInfo !== undefined) {
     const authConfigPathJS = path.resolve(functionsPath, "auth.config.js");
     const authConfigPathTS = path.resolve(functionsPath, "auth.config.js");
-    const authConfigPath = ctx.fs.exists(authConfigPathJS)
+    const authConfigPath = await ctx.fs.exists(authConfigPathJS)
       ? authConfigPathJS
       : authConfigPathTS;
     const authConfigRelativePath = path.join(
       config.functions,
-      ctx.fs.exists(authConfigPathJS) ? "auth.config.js" : "auth.config.ts",
+      await ctx.fs.exists(authConfigPathJS) ? "auth.config.js" : "auth.config.ts",
     );
-    if (ctx.fs.exists(authConfigPath)) {
+    if (await ctx.fs.exists(authConfigPath)) {
       await ctx.crash({
         exitCode: 1,
         errorType: "invalid filesystem data",
@@ -553,7 +553,7 @@ export async function upgradeOldAuthInfoToAuthConfig(
       const indentedProvidersString = [providersStringLines[0]]
         .concat(providersStringLines.slice(1).map((line) => `  ${line}`))
         .join(EOL);
-      ctx.fs.writeUtf8File(
+      await ctx.fs.writeUtf8File(
         authConfigPath,
         `\
   export default {
@@ -584,7 +584,7 @@ export async function writeProjectConfig(
   if (Object.keys(strippedConfig).length > 0) {
     try {
       const contents = JSON.stringify(strippedConfig, undefined, 2) + "\n";
-      ctx.fs.writeUtf8File(configPath, contents, 0o644);
+      await ctx.fs.writeUtf8File(configPath, contents, 0o644);
     } catch (err) {
       return await ctx.crash({
         exitCode: 1,
@@ -595,15 +595,15 @@ export async function writeProjectConfig(
           "  Are you running this command from the root directory of a Convex project?",
       });
     }
-  } else if (deleteIfAllDefault && ctx.fs.exists(configPath)) {
-    ctx.fs.unlink(configPath);
+  } else if (deleteIfAllDefault && await ctx.fs.exists(configPath)) {
+    await ctx.fs.unlink(configPath);
     logMessage(
       chalk.yellowBright(
         `Deleted ${configPath} since it completely matched defaults`,
       ),
     );
   }
-  ctx.fs.mkdir(functionsDir(configPath, projectConfig), {
+  await ctx.fs.mkdir(functionsDir(configPath, projectConfig), {
     allowExisting: true,
   });
 }
@@ -646,7 +646,7 @@ function filterWriteableConfig(projectConfig: any) {
   return writeable;
 }
 
-export function removedExistingConfig(
+export async function removedExistingConfig(
   ctx: Context,
   configPath: string,
   options: { allowExistingConfig?: boolean },
@@ -654,7 +654,7 @@ export function removedExistingConfig(
   if (!options.allowExistingConfig) {
     return false;
   }
-  recursivelyDelete(ctx, configPath);
+  await recursivelyDelete(ctx, configPath);
   logFinishedStep(`Removed existing ${configPath}`);
   return true;
 }

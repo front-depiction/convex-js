@@ -43,7 +43,7 @@ export async function writeConvexUrlToEnvFile(
     commentAfterValue: null,
     commentOnPreviousLine: null,
   })!;
-  ctx.fs.writeUtf8File(envFile, modified);
+  await ctx.fs.writeUtf8File(envFile, modified);
   return writeConfig;
 }
 
@@ -99,7 +99,7 @@ export async function suggestedEnvVarName(ctx: Context): Promise<{
   envVar: string;
 }> {
   // no package.json, that's fine, just guess
-  if (!ctx.fs.exists("package.json")) {
+  if (!await ctx.fs.exists("package.json")) {
     return {
       envVar: "CONVEX_URL",
     };
@@ -180,13 +180,13 @@ async function envVarWriteConfig(
 ): Promise<ConvexUrlWriteConfig> {
   const { detectedFramework, envVar } = await suggestedEnvVarName(ctx);
 
-  const { envFile, existing } = suggestedDevEnvFile(ctx, detectedFramework);
+  const { envFile, existing } = await suggestedDevEnvFile(ctx, detectedFramework);
 
   if (!existing) {
     return { envFile, envVar, existingFileContent: null };
   }
 
-  const existingFileContent = ctx.fs.readUtf8File(envFile);
+  const existingFileContent = await ctx.fs.readUtf8File(envFile);
   const config = dotenv.parse(existingFileContent);
 
   const matching = Object.keys(config).filter((key) => EXPECTED_NAMES.has(key));
@@ -217,15 +217,15 @@ async function envVarWriteConfig(
   return { envFile, envVar, existingFileContent };
 }
 
-function suggestedDevEnvFile(
+async function suggestedDevEnvFile(
   ctx: Context,
   framework?: Framework,
-): {
+): Promise<{
   existing: boolean;
   envFile: string;
-} {
+}> {
   // If a .env.local file exists, that's unequivocally the right file
-  if (ctx.fs.exists(".env.local")) {
+  if (await ctx.fs.exists(".env.local")) {
     return {
       existing: true,
       envFile: ".env.local",
@@ -235,14 +235,14 @@ function suggestedDevEnvFile(
   // Remix is on team "don't commit the .env file," so .env is for dev.
   if (framework === "Remix") {
     return {
-      existing: ctx.fs.exists(".env"),
+      existing: await ctx.fs.exists(".env"),
       envFile: ".env",
     };
   }
 
   // The most dev-looking env file that exists, or .env.local
   return {
-    existing: ctx.fs.exists(".env.local"),
+    existing: await ctx.fs.exists(".env.local"),
     envFile: ".env.local",
   };
 }

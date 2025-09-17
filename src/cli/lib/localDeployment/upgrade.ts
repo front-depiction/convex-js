@@ -56,7 +56,7 @@ export async function handlePotentialUpgrade(
   };
   if (args.oldVersion === null || args.oldVersion === args.newVersion) {
     // No upgrade needed. Save the current config and start running the backend.
-    saveDeploymentConfig(
+    await saveDeploymentConfig(
       ctx,
       args.deploymentKind,
       args.deploymentName,
@@ -89,7 +89,7 @@ export async function handlePotentialUpgrade(
       },
     );
     // Skipping upgrade, save the config with the old version and run.
-    saveDeploymentConfig(ctx, args.deploymentKind, args.deploymentName, {
+    await saveDeploymentConfig(ctx, args.deploymentKind, args.deploymentName, {
       ...newConfig,
       backendVersion: args.oldVersion,
     });
@@ -117,8 +117,8 @@ export async function handlePotentialUpgrade(
     args.deploymentName,
   );
   if (choice === "reset") {
-    recursivelyDelete(ctx, deploymentStatePath, { force: true });
-    saveDeploymentConfig(
+    await recursivelyDelete(ctx, deploymentStatePath, { force: true });
+    await saveDeploymentConfig(
       ctx,
       args.deploymentKind,
       args.deploymentName,
@@ -135,7 +135,7 @@ export async function handlePotentialUpgrade(
   }
   const newAdminKey = args.adminKey;
   const oldAdminKey =
-    loadDeploymentConfig(ctx, args.deploymentKind, args.deploymentName)
+    (await loadDeploymentConfig(ctx, args.deploymentKind, args.deploymentName))
       ?.adminKey ?? args.adminKey;
   return handleUpgrade(ctx, {
     deploymentKind: args.deploymentKind,
@@ -206,8 +206,8 @@ async function handleUpgrade(
     deploymentStateDir(args.deploymentKind, args.deploymentName),
     "export.zip",
   );
-  if (ctx.fs.exists(exportPath)) {
-    ctx.fs.unlink(exportPath);
+  if (await ctx.fs.exists(exportPath)) {
+    await ctx.fs.unlink(exportPath);
   }
   const snaphsotExportState = await startSnapshotExport(ctx, {
     deploymentUrl,
@@ -329,7 +329,7 @@ async function handleUpgrade(
   }
 
   logFinishedStep("Successfully upgraded to a new backend version");
-  saveDeploymentConfig(ctx, args.deploymentKind, args.deploymentName, {
+  await saveDeploymentConfig(ctx, args.deploymentKind, args.deploymentName, {
     ports: args.ports,
     backendVersion: args.newVersion,
     adminKey: args.newAdminKey,

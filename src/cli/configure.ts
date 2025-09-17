@@ -169,7 +169,7 @@ export async function _deploymentCredentialsOrConfigure(
     } | null;
   }
 > {
-  const config = readGlobalConfig(ctx);
+  const config = await readGlobalConfig(ctx);
   const globallyForceCloud = !!config?.optOutOfLocalDevDeploymentsUntilBetaOver;
   if (globallyForceCloud && cmdOptions.local) {
     return await ctx.crash({

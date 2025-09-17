@@ -483,7 +483,7 @@ export async function loadPackageJson(
 ): Promise<Record<string, string>> {
   let packageJson;
   try {
-    packageJson = ctx.fs.readUtf8File("package.json");
+    packageJson = await ctx.fs.readUtf8File("package.json");
   } catch (err) {
     return await ctx.crash({
       exitCode: 1,
@@ -830,7 +830,7 @@ export async function findParentConfigs(ctx: Context): Promise<{
   parentPackageJson: string;
   parentConvexJson?: string | undefined;
 }> {
-  const parentPackageJson = findUp(ctx, "package.json");
+  const parentPackageJson = await findUp(ctx, "package.json");
   if (!parentPackageJson) {
     return await ctx.crash({
       exitCode: 1,
@@ -843,7 +843,7 @@ export async function findParentConfigs(ctx: Context): Promise<{
     parentPackageJson &&
     path.join(path.dirname(parentPackageJson), "convex.json");
   const parentConvexJson =
-    candidateConvexJson && ctx.fs.exists(candidateConvexJson)
+    candidateConvexJson && await ctx.fs.exists(candidateConvexJson)
       ? candidateConvexJson
       : undefined;
   return {
@@ -857,12 +857,12 @@ export async function findParentConfigs(ctx: Context): Promise<{
  *
  * @returns The absolute path of the first file found or undefined.
  */
-function findUp(ctx: Context, filename: string): string | undefined {
+async function findUp(ctx: Context, filename: string): Promise<string | undefined> {
   let curDir = path.resolve(".");
   let parentDir = curDir;
   do {
     const candidate = path.join(curDir, filename);
-    if (ctx.fs.exists(candidate)) {
+    if (await ctx.fs.exists(candidate)) {
       return candidate;
     }
     curDir = parentDir;

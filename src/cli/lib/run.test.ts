@@ -13,7 +13,7 @@ test("parseFunctionName", async () => {
     ...originalContext,
     fs: {
       ...originalContext.fs,
-      exists: (file: string) => files.has(file),
+      exists: async (file: string) => files.has(file),
     },
   };
 

@@ -69,19 +69,19 @@ export type LocalDeploymentConfig = {
   // If not present, use the default instance secret for local backends
   instanceSecret?: string;
 };
-export function loadDeploymentConfig(
+export async function loadDeploymentConfig(
   ctx: Context,
   deploymentKind: LocalDeploymentKind,
   deploymentName: string,
-): LocalDeploymentConfig | null {
+): Promise<LocalDeploymentConfig | null> {
   const dir = deploymentStateDir(deploymentKind, deploymentName);
   const configFile = path.join(dir, "config.json");
-  if (!ctx.fs.exists(dir) || !ctx.fs.stat(dir).isDirectory()) {
+  if (!await ctx.fs.exists(dir) || !(await ctx.fs.stat(dir)).isDirectory()) {
     logVerbose(`Deployment ${deploymentName} not found`);
     return null;
   }
-  if (ctx.fs.exists(configFile)) {
-    const content = ctx.fs.readUtf8File(configFile);
+  if (await ctx.fs.exists(configFile)) {
+    const content = await ctx.fs.readUtf8File(configFile);
     try {
       return JSON.parse(content);
     } catch (e) {
@@ -92,7 +92,7 @@ export function loadDeploymentConfig(
   return null;
 }
 
-export function saveDeploymentConfig(
+export async function saveDeploymentConfig(
   ctx: Context,
   deploymentKind: LocalDeploymentKind,
   deploymentName: string,
@@ -100,10 +100,10 @@ export function saveDeploymentConfig(
 ) {
   const dir = deploymentStateDir(deploymentKind, deploymentName);
   const configFile = path.join(dir, "config.json");
-  if (!ctx.fs.exists(dir)) {
-    ctx.fs.mkdir(dir, { recursive: true });
+  if (!await ctx.fs.exists(dir)) {
+    await ctx.fs.mkdir(dir, { recursive: true });
   }
-  ctx.fs.writeUtf8File(configFile, JSON.stringify(config));
+  await ctx.fs.writeUtf8File(configFile, JSON.stringify(config));
 }
 
 export function binariesDir() {
@@ -133,10 +133,10 @@ export function dashboardDir() {
 
 export async function resetDashboardDir(ctx: Context) {
   const dir = dashboardDir();
-  if (ctx.fs.exists(dir)) {
+  if (await ctx.fs.exists(dir)) {
     await recursivelyDelete(ctx, dir);
   }
-  ctx.fs.mkdir(dir, { recursive: true });
+  await ctx.fs.mkdir(dir, { recursive: true });
 }
 
 export function dashboardOutDir() {
@@ -148,12 +148,12 @@ export type DashboardConfig = {
   apiPort: number;
   version: string;
 };
-export function loadDashboardConfig(ctx: Context) {
+export async function loadDashboardConfig(ctx: Context) {
   const configFile = path.join(dashboardDir(), "config.json");
-  if (!ctx.fs.exists(configFile)) {
+  if (!await ctx.fs.exists(configFile)) {
     return null;
   }
-  const content = ctx.fs.readUtf8File(configFile);
+  const content = await ctx.fs.readUtf8File(configFile);
   try {
     return JSON.parse(content);
   } catch (e) {
@@ -162,23 +162,23 @@ export function loadDashboardConfig(ctx: Context) {
   }
 }
 
-export function saveDashboardConfig(ctx: Context, config: DashboardConfig) {
+export async function saveDashboardConfig(ctx: Context, config: DashboardConfig) {
   const configFile = path.join(dashboardDir(), "config.json");
-  if (!ctx.fs.exists(dashboardDir())) {
-    ctx.fs.mkdir(dashboardDir(), { recursive: true });
+  if (!await ctx.fs.exists(dashboardDir())) {
+    await ctx.fs.mkdir(dashboardDir(), { recursive: true });
   }
-  ctx.fs.writeUtf8File(configFile, JSON.stringify(config));
+  await ctx.fs.writeUtf8File(configFile, JSON.stringify(config));
 }
 
-export function loadUuidForAnonymousUser(ctx: Context) {
+export async function loadUuidForAnonymousUser(ctx: Context) {
   const configFile = path.join(
     rootDeploymentStateDir("anonymous"),
     "config.json",
   );
-  if (!ctx.fs.exists(configFile)) {
+  if (!await ctx.fs.exists(configFile)) {
     return null;
   }
-  const content = ctx.fs.readUtf8File(configFile);
+  const content = await ctx.fs.readUtf8File(configFile);
   try {
     const config = JSON.parse(content);
     return config.uuid ?? null;
@@ -188,17 +188,17 @@ export function loadUuidForAnonymousUser(ctx: Context) {
   }
 }
 
-export function ensureUuidForAnonymousUser(ctx: Context) {
-  const uuid = loadUuidForAnonymousUser(ctx);
+export async function ensureUuidForAnonymousUser(ctx: Context) {
+  const uuid = await loadUuidForAnonymousUser(ctx);
   if (uuid) {
     return uuid;
   }
   const newUuid = crypto.randomUUID();
   const anonymousDir = rootDeploymentStateDir("anonymous");
-  if (!ctx.fs.exists(anonymousDir)) {
-    ctx.fs.mkdir(anonymousDir, { recursive: true });
+  if (!await ctx.fs.exists(anonymousDir)) {
+    await ctx.fs.mkdir(anonymousDir, { recursive: true });
   }
-  ctx.fs.writeUtf8File(
+  await ctx.fs.writeUtf8File(
     path.join(anonymousDir, "config.json"),
     JSON.stringify({ uuid: newUuid }),
   );

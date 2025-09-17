@@ -3,7 +3,7 @@ import { logOutput } from "../../bundler/log.js";
 import path from "path";
 import { NodeFs } from "../../bundler/fs.js";
 
-export function recursivelyDelete(
+export async function recursivelyDelete(
   ctx: Context,
   deletePath: string,
   opts?: { force?: boolean; dryRun?: boolean },
@@ -11,7 +11,7 @@ export function recursivelyDelete(
   const dryRun = !!opts?.dryRun;
   let st;
   try {
-    st = ctx.fs.stat(deletePath);
+    st = await ctx.fs.stat(deletePath);
   } catch (err: any) {
     if (err.code === "ENOENT" && opts?.force) {
       return;
@@ -20,15 +20,15 @@ export function recursivelyDelete(
     throw err;
   }
   if (st.isDirectory()) {
-    for (const entry of ctx.fs.listDir(deletePath)) {
-      recursivelyDelete(ctx, path.join(deletePath, entry.name), opts);
+    for (const entry of await ctx.fs.listDir(deletePath)) {
+      await recursivelyDelete(ctx, path.join(deletePath, entry.name), opts);
     }
     if (dryRun) {
       logOutput(`Command would delete directory: ${deletePath}`);
       return;
     }
     try {
-      ctx.fs.rmdir(deletePath);
+      await ctx.fs.rmdir(deletePath);
     } catch (err: any) {
       if (err.code !== "ENOENT") {
         // eslint-disable-next-line no-restricted-syntax
@@ -41,7 +41,7 @@ export function recursivelyDelete(
       return;
     }
     try {
-      ctx.fs.unlink(deletePath);
+      await ctx.fs.unlink(deletePath);
     } catch (err: any) {
       if (err.code !== "ENOENT") {
         // eslint-disable-next-line no-restricted-syntax

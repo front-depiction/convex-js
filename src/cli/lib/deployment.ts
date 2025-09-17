@@ -49,8 +49,8 @@ export async function writeDeploymentEnvVar(
   },
   existingValue: string | null,
 ): Promise<{ wroteToGitIgnore: boolean; changedDeploymentEnvVar: boolean }> {
-  const existingFile = ctx.fs.exists(ENV_VAR_FILE_PATH)
-    ? ctx.fs.readUtf8File(ENV_VAR_FILE_PATH)
+  const existingFile = await ctx.fs.exists(ENV_VAR_FILE_PATH)
+    ? await ctx.fs.readUtf8File(ENV_VAR_FILE_PATH)
     : null;
   const changedFile = changesToEnvVarFile(
     existingFile,
@@ -61,7 +61,7 @@ export async function writeDeploymentEnvVar(
     deploymentType + ":" + deployment.deploymentName;
 
   if (changedFile !== null) {
-    ctx.fs.writeUtf8File(ENV_VAR_FILE_PATH, changedFile);
+    await ctx.fs.writeUtf8File(ENV_VAR_FILE_PATH, changedFile);
     // Only do this if we're not reinitializing an existing setup
     return {
       wroteToGitIgnore: await gitIgnoreEnvVarFile(ctx),
@@ -76,8 +76,8 @@ export async function writeDeploymentEnvVar(
 
 // Only used in the internal --url flow
 export async function eraseDeploymentEnvVar(ctx: Context): Promise<boolean> {
-  const existingFile = ctx.fs.exists(ENV_VAR_FILE_PATH)
-    ? ctx.fs.readUtf8File(ENV_VAR_FILE_PATH)
+  const existingFile = await ctx.fs.exists(ENV_VAR_FILE_PATH)
+    ? await ctx.fs.readUtf8File(ENV_VAR_FILE_PATH)
     : null;
   if (existingFile === null) {
     return false;
@@ -91,18 +91,18 @@ export async function eraseDeploymentEnvVar(ctx: Context): Promise<boolean> {
     getEnvVarRegex(CONVEX_DEPLOYMENT_ENV_VAR_NAME),
     "",
   );
-  ctx.fs.writeUtf8File(ENV_VAR_FILE_PATH, changedFile);
+  await ctx.fs.writeUtf8File(ENV_VAR_FILE_PATH, changedFile);
   return true;
 }
 
 async function gitIgnoreEnvVarFile(ctx: Context): Promise<boolean> {
   const gitIgnorePath = ".gitignore";
-  const gitIgnoreContents = ctx.fs.exists(gitIgnorePath)
-    ? ctx.fs.readUtf8File(gitIgnorePath)
+  const gitIgnoreContents = await ctx.fs.exists(gitIgnorePath)
+    ? await ctx.fs.readUtf8File(gitIgnorePath)
     : "";
   const changedGitIgnore = changesToGitIgnore(gitIgnoreContents);
   if (changedGitIgnore !== null) {
-    ctx.fs.writeUtf8File(gitIgnorePath, changedGitIgnore);
+    await ctx.fs.writeUtf8File(gitIgnorePath, changedGitIgnore);
     return true;
   }
   return false;

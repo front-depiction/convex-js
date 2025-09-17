@@ -111,7 +111,7 @@ function componentPlugin({
         const parentDir = path.dirname(resolvedPath);
         let imported = components.get(resolvedPath);
         if (!imported) {
-          const isComponent = isComponentDirectory(ctx, parentDir, false);
+          const isComponent = await isComponentDirectory(ctx, parentDir, false);
           if (isComponent.kind !== "ok") {
             verbose && logMessage("  -> Not a component:", isComponent);
             return;
@@ -497,10 +497,10 @@ export async function bundleImplementations(
       directory.path,
     );
     let schema;
-    if (ctx.fs.exists(path.resolve(resolvedPath, "schema.ts"))) {
+    if (await ctx.fs.exists(path.resolve(resolvedPath, "schema.ts"))) {
       schema =
         (await bundleSchema(ctx, resolvedPath, extraConditions))[0] || null;
-    } else if (ctx.fs.exists(path.resolve(resolvedPath, "schema.js"))) {
+    } else if (await ctx.fs.exists(path.resolve(resolvedPath, "schema.js"))) {
       schema =
         (await bundleSchema(ctx, resolvedPath, extraConditions))[0] || null;
     } else {
@@ -631,7 +631,7 @@ async function registerEsbuildReads(
       continue;
     }
     const absPath = path.resolve(absWorkingDir, relPath);
-    const st = ctx.fs.stat(absPath);
+    const st = await ctx.fs.stat(absPath);
     if (st.size !== input.bytes) {
       // Consider this a transient error so we'll try again and hopefully
       // no files change right after esbuild next time.

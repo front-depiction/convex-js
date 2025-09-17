@@ -86,7 +86,7 @@ export async function handleAnonymousDeployment(
     logMessage(
       "Use `npx convex docs` to read the docs and `npx convex help` to see other commands.",
     );
-    ensureUuidForAnonymousUser(ctx);
+    await ensureUuidForAnonymousUser(ctx);
     if (process.stdin.isTTY) {
       const result = await promptYesNo(ctx, {
         message: "Continue?",
@@ -192,7 +192,7 @@ export async function loadAnonymousDeployment(
   ctx: Context,
   deploymentName: string,
 ): Promise<LocalDeploymentConfig> {
-  const config = loadDeploymentConfig(ctx, "anonymous", deploymentName);
+  const config = await loadDeploymentConfig(ctx, "anonymous", deploymentName);
   if (config === null) {
     return ctx.crash({
       exitCode: 1,
@@ -210,20 +210,22 @@ export async function listExistingAnonymousDeployments(ctx: Context): Promise<
   }>
 > {
   const dir = rootDeploymentStateDir("anonymous");
-  if (!ctx.fs.exists(dir)) {
+  if (!await ctx.fs.exists(dir)) {
     return [];
   }
-  const deploymentNames = ctx.fs
-    .listDir(dir)
+  const deploymentNames = (await ctx.fs.listDir(dir))
     .map((d) => d.name)
     .filter((d) => isAnonymousDeployment(d));
-  return deploymentNames.flatMap((deploymentName) => {
-    const config = loadDeploymentConfig(ctx, "anonymous", deploymentName);
-    if (config !== null) {
-      return [{ deploymentName, config }];
-    }
-    return [];
-  });
+  const results = await Promise.all(
+    deploymentNames.map(async (deploymentName) => {
+      const config = await loadDeploymentConfig(ctx, "anonymous", deploymentName);
+      if (config !== null) {
+        return { deploymentName, config };
+      }
+      return null;
+    })
+  );
+  return results.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 async function chooseDeployment(
@@ -420,7 +422,7 @@ export async function handleLinkToProject(
   logVerbose(
     `Linking ${args.deploymentName} to a project in team ${args.teamSlug}`,
   );
-  const config = loadDeploymentConfig(ctx, "anonymous", args.deploymentName);
+  const config = await loadDeploymentConfig(ctx, "anonymous", args.deploymentName);
   if (config === null) {
     return ctx.crash({
       exitCode: 1,
@@ -459,7 +461,7 @@ export async function handleLinkToProject(
       instanceName: null,
     },
   );
-  const localConfig = loadDeploymentConfig(ctx, "local", localDeploymentName);
+  const localConfig = await loadDeploymentConfig(ctx, "local", localDeploymentName);
   if (localConfig !== null) {
     return ctx.crash({
       exitCode: 1,
@@ -480,7 +482,7 @@ export async function handleLinkToProject(
     },
   );
   logVerbose(`Saving deployment config for ${localDeploymentName}`);
-  saveDeploymentConfig(ctx, "local", localDeploymentName, {
+  await saveDeploymentConfig(ctx, "local", localDeploymentName, {
     adminKey,
     backendVersion: config.backendVersion,
     ports: config.ports,
@@ -517,5 +519,5 @@ export async function moveDeployment(
     newDeployment.deploymentName,
   );
   await recursivelyCopy(ctx, nodeFs, oldPath, newPath);
-  recursivelyDelete(ctx, oldPath);
+  await recursivelyDelete(ctx, oldPath);
 }

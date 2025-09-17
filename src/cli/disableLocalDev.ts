@@ -85,7 +85,7 @@ async function disableLocalDeploymentsGloballyUntilBetaOver(
         "`disable-local-deployments --global` is not for scripting, it is temporary and only for interactive use.",
     });
   }
-  const config = readGlobalConfig(ctx);
+  const config = await readGlobalConfig(ctx);
   if (config === null) {
     return ctx.crash({
       exitCode: 1,

@@ -154,7 +154,7 @@ export async function loadLocalDeploymentCredentials(
   deploymentUrl: string;
   adminKey: string;
 }> {
-  const config = loadDeploymentConfig(ctx, "local", deploymentName);
+  const config = await loadDeploymentConfig(ctx, "local", deploymentName);
   if (config === null) {
     return ctx.crash({
       exitCode: 1,
@@ -188,7 +188,7 @@ async function handleOffline(
     startPort: 3210,
     requestedPorts: [options.ports?.cloud ?? null, options.ports?.site ?? null],
   });
-  saveDeploymentConfig(ctx, "local", deploymentName, config);
+  await saveDeploymentConfig(ctx, "local", deploymentName, config);
   await runLocalBackend(ctx, {
     binaryPath,
     ports: { cloud: cloudPort, site: sitePort },
@@ -254,20 +254,22 @@ async function getLocalDeployments(ctx: Context): Promise<
   }>
 > {
   const dir = rootDeploymentStateDir("local");
-  if (!ctx.fs.exists(dir)) {
+  if (!await ctx.fs.exists(dir)) {
     return [];
   }
-  const deploymentNames = ctx.fs
-    .listDir(dir)
+  const deploymentNames = (await ctx.fs.listDir(dir))
     .map((d) => d.name)
     .filter((d) => d.startsWith("local-"));
-  return deploymentNames.flatMap((deploymentName) => {
-    const config = loadDeploymentConfig(ctx, "local", deploymentName);
-    if (config !== null) {
-      return [{ deploymentName, config }];
-    }
-    return [];
-  });
+  const results = await Promise.all(
+    deploymentNames.map(async (deploymentName) => {
+      const config = await loadDeploymentConfig(ctx, "local", deploymentName);
+      if (config !== null) {
+        return { deploymentName, config };
+      }
+      return null;
+    })
+  );
+  return results.filter((r): r is NonNullable<typeof r> => r !== null);
 }
 
 async function chooseFromExistingLocalDeployments(ctx: Context): Promise<{

@@ -1,5 +1,5 @@
 import { BigBrainAuth, Context, ErrorType } from "../../../bundler/context.js";
-import { Filesystem, nodeFs } from "../../../bundler/fs.js";
+import { AsyncFilesystem, asyncNodeFs } from "../../../bundler/fs.js";
 import { Ora } from "ora";
 import {
   DeploymentSelectionWithinProject,
@@ -15,14 +15,14 @@ export interface McpOptions extends DeploymentSelectionOptions {
 }
 
 export class RequestContext implements Context {
-  fs: Filesystem;
+  fs: AsyncFilesystem;
   deprecationMessagePrinted = false;
   spinner: Ora | undefined;
   _cleanupFns: Record<string, (exitCode: number, err?: any) => Promise<void>> =
     {};
   _bigBrainAuth: BigBrainAuth | null = null;
   constructor(public options: McpOptions) {
-    this.fs = nodeFs;
+    this.fs = asyncNodeFs;
     this.deprecationMessagePrinted = false;
   }
 

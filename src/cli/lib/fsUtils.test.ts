@@ -19,45 +19,45 @@ describe("fsUtils", async () => {
   });
 
   describe("recursivelyDelete", () => {
-    test("deletes file", () => {
+    test("deletes file", async () => {
       const file = path.join(tmpDir, "file");
-      ctx.fs.writeUtf8File(file, "contents");
-      expect(ctx.fs.exists(file)).toBe(true);
+      await ctx.fs.writeUtf8File(file, "contents");
+      expect(await ctx.fs.exists(file)).toBe(true);
 
-      recursivelyDelete(ctx, file);
-      expect(ctx.fs.exists(file)).toBe(false);
+      await recursivelyDelete(ctx, file);
+      expect(await ctx.fs.exists(file)).toBe(false);
     });
 
-    test("throws an error on non-existent file", () => {
+    test("throws an error on non-existent file", async () => {
       const nonexistentFile = path.join(tmpDir, "nonexistent_file");
-      expect(() => {
-        recursivelyDelete(ctx, nonexistentFile);
-      }).toThrow("ENOENT: no such file or directory");
+      await expect(
+        recursivelyDelete(ctx, nonexistentFile)
+      ).rejects.toThrow("ENOENT: no such file or directory");
     });
 
-    test("does not throw error if `force` is used", () => {
+    test("does not throw error if `force` is used", async () => {
       const nonexistentFile = path.join(tmpDir, "nonexistent_file");
-      recursivelyDelete(ctx, nonexistentFile, { force: true });
+      await recursivelyDelete(ctx, nonexistentFile, { force: true });
     });
 
-    test("recursively deletes a directory", () => {
+    test("recursively deletes a directory", async () => {
       const dir = path.join(tmpDir, "dir");
-      ctx.fs.mkdir(dir);
+      await ctx.fs.mkdir(dir);
       const nestedFile = path.join(dir, "nested_file");
-      ctx.fs.writeUtf8File(nestedFile, "content");
+      await ctx.fs.writeUtf8File(nestedFile, "content");
       const nestedDir = path.join(dir, "nested_dir");
-      ctx.fs.mkdir(nestedDir);
+      await ctx.fs.mkdir(nestedDir);
 
-      expect(ctx.fs.exists(dir)).toBe(true);
+      expect(await ctx.fs.exists(dir)).toBe(true);
 
-      recursivelyDelete(ctx, dir);
-      expect(ctx.fs.exists(dir)).toBe(false);
+      await recursivelyDelete(ctx, dir);
+      expect(await ctx.fs.exists(dir)).toBe(false);
     });
 
-    test("`recursive` and `force` work together", () => {
+    test("`recursive` and `force` work together", async () => {
       const nonexistentDir = path.join(tmpDir, "nonexistent_dir");
       // Shouldn't throw an exception.
-      recursivelyDelete(ctx, nonexistentDir, { force: true });
+      await recursivelyDelete(ctx, nonexistentDir, { force: true });
     });
   });
 

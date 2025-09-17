@@ -6,7 +6,7 @@ export const DASHBOARD_HOST = process.env.CONVEX_PROVISION_HOST
   ? "http://localhost:6789"
   : "https://dashboard.convex.dev";
 
-export function getDashboardUrl(
+export async function getDashboardUrl(
   ctx: Context,
   {
     deploymentName,
@@ -15,10 +15,10 @@ export function getDashboardUrl(
     deploymentName: string;
     deploymentType: DeploymentType;
   },
-): string | null {
+): Promise<string | null> {
   switch (deploymentType) {
     case "anonymous": {
-      return localDashboardUrl(ctx, deploymentName);
+      return await localDashboardUrl(ctx, deploymentName);
     }
     case "local":
     case "dev":

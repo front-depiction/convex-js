@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Ora } from "ora";
-import { Filesystem, nodeFs } from "./fs.js";
+import { AsyncFilesystem, asyncNodeFs } from "./fs.js";
 import { initializeBigBrainAuth } from "../cli/lib/deploymentSelection.js";
 import { logFailure, logVerbose } from "./log.js";
 // How the error should be handled when running `npx convex dev`.
@@ -54,7 +54,7 @@ export type BigBrainAuth = {
 );
 
 export interface Context {
-  fs: Filesystem;
+  fs: AsyncFilesystem;
   deprecationMessagePrinted: boolean;
   // Reports to Sentry and either throws FatalError or exits the process.
   // Prints the `printedMessage` if provided
@@ -97,7 +97,7 @@ class OneoffContextImpl {
     string,
     (exitCode: number, err?: any) => Promise<void>
   > = {};
-  public fs: Filesystem = nodeFs;
+  public fs: AsyncFilesystem = asyncNodeFs;
   public deprecationMessagePrinted: boolean = false;
   public spinner: Ora | undefined = undefined;
   private _bigBrainAuth: BigBrainAuth | null = null;

@@ -60,8 +60,8 @@ export async function pushSchema(
   deploymentName: string | null,
 ): Promise<{ schemaId?: string; schemaState?: SchemaState }> {
   if (
-    !ctx.fs.exists(path.resolve(schemaDir, "schema.ts")) &&
-    !ctx.fs.exists(path.resolve(schemaDir, "schema.js"))
+    !await ctx.fs.exists(path.resolve(schemaDir, "schema.ts")) &&
+    !await ctx.fs.exists(path.resolve(schemaDir, "schema.js"))
   ) {
     // Don't do anything.
     return {};

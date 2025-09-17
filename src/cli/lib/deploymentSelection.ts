@@ -64,7 +64,7 @@ export async function initializeBigBrainAuth(
   if (initialArgs.url !== undefined && initialArgs.adminKey !== undefined) {
     // Do not check any env vars if `url` and `adminKey` are specified via CLI
     ctx._updateBigBrainAuth(
-      getBigBrainAuth(ctx, {
+      await getBigBrainAuth(ctx, {
         previewDeployKey: null,
         projectKey: null,
         deploymentKey: null,
@@ -73,8 +73,8 @@ export async function initializeBigBrainAuth(
     return;
   }
   if (initialArgs.envFile !== undefined) {
-    const existingFile = ctx.fs.exists(initialArgs.envFile)
-      ? ctx.fs.readUtf8File(initialArgs.envFile)
+    const existingFile = await ctx.fs.exists(initialArgs.envFile)
+      ? await ctx.fs.readUtf8File(initialArgs.envFile)
       : null;
     if (existingFile === null) {
       return ctx.crash({
@@ -86,7 +86,7 @@ export async function initializeBigBrainAuth(
     const config = dotenv.parse(existingFile);
     const deployKey = config[CONVEX_DEPLOY_KEY_ENV_VAR_NAME];
     if (deployKey !== undefined) {
-      const bigBrainAuth = getBigBrainAuth(ctx, {
+      const bigBrainAuth = await getBigBrainAuth(ctx, {
         previewDeployKey: isPreviewDeployKey(deployKey) ? deployKey : null,
         projectKey: isProjectKey(deployKey) ? deployKey : null,
         deploymentKey: isDeploymentKey(deployKey) ? deployKey : null,
@@ -99,7 +99,7 @@ export async function initializeBigBrainAuth(
   dotenv.config();
   const deployKey = process.env[CONVEX_DEPLOY_KEY_ENV_VAR_NAME];
   if (deployKey !== undefined) {
-    const bigBrainAuth = getBigBrainAuth(ctx, {
+    const bigBrainAuth = await getBigBrainAuth(ctx, {
       previewDeployKey: isPreviewDeployKey(deployKey) ? deployKey : null,
       projectKey: isProjectKey(deployKey) ? deployKey : null,
       deploymentKey: isDeploymentKey(deployKey) ? deployKey : null,
@@ -108,7 +108,7 @@ export async function initializeBigBrainAuth(
     return;
   }
   ctx._updateBigBrainAuth(
-    getBigBrainAuth(ctx, {
+    await getBigBrainAuth(ctx, {
       previewDeployKey: null,
       projectKey: null,
       deploymentKey: null,
@@ -139,14 +139,14 @@ export async function clearBigBrainAuth(ctx: Context) {
   ctx._updateBigBrainAuth(null);
 }
 
-function getBigBrainAuth(
+async function getBigBrainAuth(
   ctx: Context,
   opts: {
     previewDeployKey: string | null;
     projectKey: string | null;
     deploymentKey: string | null;
   },
-): BigBrainAuth | null {
+): Promise<BigBrainAuth | null> {
   if (process.env.CONVEX_OVERRIDE_ACCESS_TOKEN) {
     return {
       accessToken: process.env.CONVEX_OVERRIDE_ACCESS_TOKEN,
@@ -170,7 +170,7 @@ function getBigBrainAuth(
       deploymentKey: opts.deploymentKey,
     };
   }
-  const globalConfig = readGlobalConfig(ctx);
+  const globalConfig = await readGlobalConfig(ctx);
   if (globalConfig) {
     return {
       kind: "accessToken",
@@ -350,8 +350,8 @@ async function _getDeploymentSelection(
   if (cliArgs.envFile) {
     // If an `--env-file` is specified, it must contain enough information for both auth and deployment selection.
     logVerbose(`Checking env file: ${cliArgs.envFile}`);
-    const existingFile = ctx.fs.exists(cliArgs.envFile)
-      ? ctx.fs.readUtf8File(cliArgs.envFile)
+    const existingFile = await ctx.fs.exists(cliArgs.envFile)
+      ? await ctx.fs.readUtf8File(cliArgs.envFile)
       : null;
     if (existingFile === null) {
       return ctx.crash({

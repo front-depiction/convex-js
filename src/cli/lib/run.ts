@@ -226,15 +226,18 @@ export async function parseFunctionName(
   const functionNameWithoutPrefix = `${filePathWithoutPrefix}:${exportName}`;
 
   if (hasExtension) {
-    if (ctx.fs.exists(path.join(functionDirName, filePath))) {
+    if (await ctx.fs.exists(path.join(functionDirName, filePath))) {
       return normalizedName;
     } else {
       return functionNameWithoutPrefix;
     }
   } else {
-    const exists = possibleExtensions.some((extension) =>
-      ctx.fs.exists(path.join(functionDirName, filePath + extension)),
+    const existsResults = await Promise.all(
+      possibleExtensions.map((extension) =>
+        ctx.fs.exists(path.join(functionDirName, filePath + extension)),
+      ),
     );
+    const exists = existsResults.some(Boolean);
     if (exists) {
       return normalizedName;
     } else {

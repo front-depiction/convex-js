@@ -74,7 +74,7 @@ export async function typeCheckFunctions(
   handleResult: TypecheckResultHandler,
 ): Promise<void> {
   const tsconfig = path.join(functionsDir, "tsconfig.json");
-  if (!ctx.fs.exists(tsconfig)) {
+  if (!await ctx.fs.exists(tsconfig)) {
     return handleResult("cantTypeCheck", () => {
       logError(
         "Found no convex/tsconfig.json to use to typecheck Convex functions, so skipping typecheck.",
@@ -92,7 +92,7 @@ async function runTsc(
 ): Promise<void> {
   // Check if tsc is even installed
   const tscPath = path.join("node_modules", "typescript", "bin", "tsc");
-  if (!ctx.fs.exists(tscPath)) {
+  if (!await ctx.fs.exists(tscPath)) {
     return handleResult("cantTypeCheck", () => {
       logError(
         chalk.gray("No TypeScript binary found, so skipping typecheck."),
@@ -155,7 +155,7 @@ async function runTscInner(
     const absPath = path.resolve(fileTouched);
     let st;
     try {
-      st = ctx.fs.stat(absPath);
+      st = await ctx.fs.stat(absPath);
       anyPathsFound = true;
     } catch {
       // Just move on if we have a bogus path from `tsc`. We'll log below if

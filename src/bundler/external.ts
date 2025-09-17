@@ -25,7 +25,7 @@ async function resolveNodeModule(
     }))
   ) {
     const maybePath = path.join(nodeModulesPath, moduleDir);
-    if (ctx.fs.exists(maybePath)) {
+    if (await ctx.fs.exists(maybePath)) {
       return maybePath;
     }
     resolveDir = path.dirname(path.dirname(nodeModulesPath));
@@ -116,7 +116,7 @@ export async function computeExternalPackages(
   const externalPackages = new Map<string, ExternalPackage>();
   let packageJson: any;
   try {
-    const packageJsonString = ctx.fs.readUtf8File(packageJsonPath);
+    const packageJsonString = await ctx.fs.readUtf8File(packageJsonPath);
     packageJson = JSON.parse(packageJsonString);
   } catch (error: any) {
     return await ctx.crash({
@@ -165,7 +165,7 @@ export async function computeExternalPackages(
         "node_modules",
         getModule(packageName).dirName,
       );
-      if (ctx.fs.exists(packagePath)) {
+      if (await ctx.fs.exists(packagePath)) {
         externalPackages.set(packageName, {
           path: packagePath,
         });
@@ -223,7 +223,7 @@ export async function findExactVersionAndDependencies(
   const modulePackageJsonPath = path.join(modulePath, "package.json");
   let modulePackageJson: any;
   try {
-    const packageJsonString = ctx.fs.readUtf8File(modulePackageJsonPath);
+    const packageJsonString = await ctx.fs.readUtf8File(modulePackageJsonPath);
     modulePackageJson = JSON.parse(packageJsonString);
   } catch {
     return await ctx.crash({

@@ -47,7 +47,7 @@ export async function importIntoDeployment(
     component?: string;
   },
 ) {
-  if (!ctx.fs.exists(filePath)) {
+  if (!await ctx.fs.exists(filePath)) {
     return await ctx.crash({
       exitCode: 1,
       errorType: "invalid filesystem data",
@@ -94,7 +94,7 @@ export async function importIntoDeployment(
     );
   }
 
-  const fileStats = ctx.fs.stat(filePath);
+  const fileStats = await ctx.fs.stat(filePath);
   showSpinner(`Importing ${filePath} (${formatSize(fileStats.size)})`);
 
   let mode = "requireEmpty";
@@ -419,7 +419,7 @@ export async function uploadForImport(
     adminKey,
   });
 
-  const fileStats = ctx.fs.stat(filePath);
+  const fileStats = await ctx.fs.stat(filePath);
   // The backend rejects uploads of 10k or more parts. We use 9999 instead of
   // 10000 so rounding errors can't push us over the limit.
   const minChunkSize = Math.ceil(fileStats.size / 9999);

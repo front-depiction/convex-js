@@ -23,7 +23,7 @@ export const DEFAULT_LOCAL_DASHBOARD_API_PORT = 6791;
  * assuming this is only used for `anonymous`.
  */
 export async function handleDashboard(ctx: Context, version: string) {
-  const anonymousId = loadUuidForAnonymousUser(ctx) ?? undefined;
+  const anonymousId = (await loadUuidForAnonymousUser(ctx)) ?? undefined;
   const isRunning = await checkIfDashboardIsRunning(ctx);
   if (isRunning) {
     // It's possible this is running with a different version, but
@@ -126,7 +126,7 @@ async function startServingListDeploymentsApi(ctx: Context, port: number) {
 }
 
 export async function checkIfDashboardIsRunning(ctx: Context) {
-  const dashboardConfig = loadDashboardConfig(ctx);
+  const dashboardConfig = await loadDashboardConfig(ctx);
   if (dashboardConfig === null) {
     return false;
   }
@@ -151,8 +151,8 @@ export async function checkIfDashboardIsRunning(ctx: Context) {
   return Array.isArray(data.deployments);
 }
 
-export function dashboardUrl(ctx: Context, deploymentName: string) {
-  const dashboardConfig = loadDashboardConfig(ctx);
+export async function dashboardUrl(ctx: Context, deploymentName: string) {
+  const dashboardConfig = await loadDashboardConfig(ctx);
   if (dashboardConfig === null) {
     return null;
   }

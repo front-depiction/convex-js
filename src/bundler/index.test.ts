@@ -134,49 +134,46 @@ test("bundle does not warn about https.js|ts which does not import httpRouter", 
   expect(logSpy).toHaveBeenCalledTimes(0);
 });
 
-test("use node regex", () => {
-  // Double quotes
-  expect('"use node";').toMatch(useNodeDirectiveRegex);
-  // Single quotes
-  expect("'use node';").toMatch(useNodeDirectiveRegex);
-  // No semi column
-  expect('"use node"').toMatch(useNodeDirectiveRegex);
-  expect("'use node'").toMatch(useNodeDirectiveRegex);
-  // Extra spaces
-  expect('   "use node"   ').toMatch(useNodeDirectiveRegex);
-  expect("   'use node'   ").toMatch(useNodeDirectiveRegex);
-
-  // Nothing
-  expect("").not.toMatch(useNodeDirectiveRegex);
-  // No quotes
-  expect("use node").not.toMatch(useNodeDirectiveRegex);
-  // In a comment
-  expect('// "use node";').not.toMatch(useNodeDirectiveRegex);
-  // Typo
-  expect('"use nod";').not.toMatch(useNodeDirectiveRegex);
-  // Extra quotes
-  expect('""use node"";').not.toMatch(useNodeDirectiveRegex);
-  expect("''use node'';").not.toMatch(useNodeDirectiveRegex);
-  // Extra semi colons
-  expect('"use node";;;').not.toMatch(useNodeDirectiveRegex);
-  // Twice
-  expect('"use node";"use node";').not.toMatch(useNodeDirectiveRegex);
+test.each([
+  // Should match
+  ['"use node";', true],
+  ["'use node';", true],
+  ['"use node"', true],
+  ["'use node'", true],
+  ['   "use node"   ', true],
+  ["   'use node'   ", true],
+  // Should not match
+  ["", false],
+  ["use node", false],
+  ['// "use node";', false],
+  ['"use nod";', false],
+  ['""use node"";', false],
+  ["''use node'';", false],
+  ['"use node";;;', false],
+  ['"use node";"use node";', false],
+])('useNodeDirectiveRegex matches %j: %s', (input, expected) => {
+  if (expected) {
+    expect(input).toMatch(useNodeDirectiveRegex);
+  } else {
+    expect(input).not.toMatch(useNodeDirectiveRegex);
+  }
 });
 
-test("must use isolate", () => {
-  expect(mustBeIsolate("http.js")).toBeTruthy();
-  expect(mustBeIsolate("http.mjs")).toBeTruthy();
-  expect(mustBeIsolate("http.ts")).toBeTruthy();
-  expect(mustBeIsolate("crons.js")).toBeTruthy();
-  expect(mustBeIsolate("crons.cjs")).toBeTruthy();
-  expect(mustBeIsolate("crons.ts")).toBeTruthy();
-  expect(mustBeIsolate("schema.js")).toBeTruthy();
-  expect(mustBeIsolate("schema.jsx")).toBeTruthy();
-  expect(mustBeIsolate("schema.ts")).toBeTruthy();
-  expect(mustBeIsolate("schema.js")).toBeTruthy();
-
-  expect(mustBeIsolate("http.sample.js")).not.toBeTruthy();
-  expect(mustBeIsolate("https.js")).not.toBeTruthy();
-  expect(mustBeIsolate("schema2.js")).not.toBeTruthy();
-  expect(mustBeIsolate("schema/http.js")).not.toBeTruthy();
+test.each([
+  ["http.js", true],
+  ["http.mjs", true],
+  ["http.ts", true],
+  ["crons.js", true],
+  ["crons.cjs", true],
+  ["crons.ts", true],
+  ["schema.js", true],
+  ["schema.jsx", true],
+  ["schema.ts", true],
+  ["schema.js", true],
+  ["http.sample.js", false],
+  ["https.js", false],
+  ["schema2.js", false],
+  ["schema/http.js", false],
+])('mustBeIsolate(%j) === %s', (input, expected) => {
+  expect(mustBeIsolate(input)).toBe(expected);
 });

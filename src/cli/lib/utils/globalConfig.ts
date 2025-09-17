@@ -24,11 +24,11 @@ const schema = z.object({
   optOutOfLocalDevDeploymentsUntilBetaOver: z.boolean().optional(),
 });
 
-export function readGlobalConfig(ctx: Context): GlobalConfig | null {
+export async function readGlobalConfig(ctx: Context): Promise<GlobalConfig | null> {
   const configPath = globalConfigPath();
   let configFile;
   try {
-    configFile = ctx.fs.readUtf8File(configPath);
+    configFile = await ctx.fs.readUtf8File(configPath);
   } catch {
     return null;
   }
@@ -54,7 +54,7 @@ export async function modifyGlobalConfig(ctx: Context, config: GlobalConfig) {
   const configPath = globalConfigPath();
   let configFile;
   try {
-    configFile = ctx.fs.readUtf8File(configPath);
+    configFile = await ctx.fs.readUtf8File(configPath);
     // totally fine for it not to exist
     // eslint-disable-next-line no-empty
   } catch {}
@@ -82,10 +82,10 @@ export async function modifyGlobalConfig(ctx: Context, config: GlobalConfig) {
 /** Write global config, overwriting any existing settings. */
 async function overrwriteGlobalConfig(ctx: Context, config: GlobalConfig) {
   const dirName = rootDirectory();
-  ctx.fs.mkdir(dirName, { allowExisting: true });
+  await ctx.fs.mkdir(dirName, { allowExisting: true });
   const path = globalConfigPath();
   try {
-    ctx.fs.writeUtf8File(path, JSON.stringify(config, null, 2));
+    await ctx.fs.writeUtf8File(path, JSON.stringify(config, null, 2));
   } catch (err) {
     return await ctx.crash({
       exitCode: 1,

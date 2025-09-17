@@ -33,7 +33,7 @@ export async function runLocalBackend(
     args.deploymentKind,
     args.deploymentName,
   );
-  ctx.fs.mkdir(deploymentDir, { recursive: true });
+  await ctx.fs.mkdir(deploymentDir, { recursive: true });
   const deploymentNameSha = createHash("sha256")
     .update(args.deploymentName)
     .digest("hex");

@@ -42,7 +42,7 @@ const loginStatus = new Command("status")
       envFile: undefined,
     });
 
-    const globalConfig = readGlobalConfig(ctx);
+    const globalConfig = await readGlobalConfig(ctx);
     const hasToken = globalConfig?.accessToken !== null;
 
     if (hasToken) {
@@ -153,7 +153,7 @@ export const login = new Command("login")
       );
     }
 
-    const uuid = loadUuidForAnonymousUser(ctx);
+    const uuid = await loadUuidForAnonymousUser(ctx);
     await performLogin(ctx, {
       ...options,
       anonymousId: uuid,

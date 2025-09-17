@@ -204,8 +204,8 @@ export async function downloadSnapshotExport(
   }
 
   let filePath;
-  if (ctx.fs.exists(inputPath)) {
-    const st = ctx.fs.stat(inputPath);
+  if (await ctx.fs.exists(inputPath)) {
+    const st = await ctx.fs.stat(inputPath);
     if (st.isDirectory()) {
       const contentDisposition =
         response.headers.get("content-disposition") ?? "";

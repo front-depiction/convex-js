@@ -236,13 +236,13 @@ async function checkForExistingDownload(
   version: string,
 ): Promise<string | null> {
   const destDir = versionedBinaryDir(version);
-  if (!ctx.fs.exists(destDir)) {
+  if (!await ctx.fs.exists(destDir)) {
     return null;
   }
   const p = executablePath(version);
-  if (!ctx.fs.exists(p)) {
+  if (!await ctx.fs.exists(p)) {
     // This directory isn't what we expected. Remove it.
-    recursivelyDelete(ctx, destDir, { force: true });
+    await recursivelyDelete(ctx, destDir, { force: true });
     return null;
   }
   await makeExecutable(p);
@@ -272,8 +272,8 @@ async function downloadBackendBinary(
       const tempExecPath = path.join(unzippedPath, name);
       await makeExecutable(tempExecPath);
       logVerbose("Marked as executable");
-      ctx.fs.mkdir(versionedBinaryDir(version), { recursive: true });
-      ctx.fs.swapTmpFile(tempExecPath as TempPath, executablePath(version));
+      await ctx.fs.mkdir(versionedBinaryDir(version), { recursive: true });
+      await ctx.fs.swapTmpFile(tempExecPath as TempPath, executablePath(version));
     },
   });
   return executablePath(version);
@@ -373,7 +373,7 @@ async function downloadZipFile(
 }
 
 export async function ensureDashboardDownloaded(ctx: Context, version: string) {
-  const config = loadDashboardConfig(ctx);
+  const config = await loadDashboardConfig(ctx);
   if (config !== null && config.version === version) {
     return;
   }
@@ -382,8 +382,8 @@ export async function ensureDashboardDownloaded(ctx: Context, version: string) {
 }
 async function _ensureDashboardDownloaded(ctx: Context, version: string) {
   const zipLocation = dashboardZip();
-  if (ctx.fs.exists(zipLocation)) {
-    ctx.fs.unlink(zipLocation);
+  if (await ctx.fs.exists(zipLocation)) {
+    await ctx.fs.unlink(zipLocation);
   }
   const outDir = dashboardOutDir();
   await downloadZipFile(ctx, {

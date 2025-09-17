@@ -1,6 +1,6 @@
 import chokidar from "chokidar";
 import path from "path";
-import { Observations, RecordingFs, WatchEvent } from "../../bundler/fs.js";
+import { Observations, AsyncRecordingFs, WatchEvent } from "../../bundler/fs.js";
 import { BigBrainAuth, Context, ErrorType } from "../../bundler/context.js";
 import { logFailure } from "../../bundler/log.js";
 import * as Sentry from "@sentry/node";
@@ -102,13 +102,13 @@ export class WatchContext implements Context {
     string,
     (exitCode: number, err?: any) => Promise<void>
   > = {};
-  fs: RecordingFs;
+  fs: AsyncRecordingFs;
   deprecationMessagePrinted: boolean;
   spinner: Ora | undefined;
   private _bigBrainAuth: BigBrainAuth | null;
 
   constructor(traceEvents: boolean, bigBrainAuth: BigBrainAuth | null) {
-    this.fs = new RecordingFs(traceEvents);
+    this.fs = new AsyncRecordingFs(traceEvents);
     this.deprecationMessagePrinted = false;
     this._bigBrainAuth = bigBrainAuth;
   }

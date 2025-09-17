@@ -65,7 +65,7 @@ async function findComponentRootPath(ctx: Context, functionsDir: string) {
   let componentRootPath = path.resolve(
     path.join(functionsDir, DEFINITION_FILENAME_TS),
   );
-  if (!ctx.fs.exists(componentRootPath)) {
+  if (!await ctx.fs.exists(componentRootPath)) {
     componentRootPath = path.resolve(
       path.join(functionsDir, DEFINITION_FILENAME_JS),
     );
@@ -89,7 +89,7 @@ export async function runCodegen(
     functionsDirectoryPath,
   );
 
-  if (ctx.fs.exists(componentRootPath)) {
+  if (await ctx.fs.exists(componentRootPath)) {
     // Early exit for a better error message trying to use a preview key.
     if (deploymentSelection.kind === "preview") {
       return await ctx.crash({
@@ -149,7 +149,7 @@ export async function runPush(ctx: Context, options: PushOptions) {
   const { configPath, projectConfig } = await readProjectConfig(ctx);
   const convexDir = functionsDir(configPath, projectConfig);
   const componentRootPath = await findComponentRootPath(ctx, convexDir);
-  if (ctx.fs.exists(componentRootPath)) {
+  if (await ctx.fs.exists(componentRootPath)) {
     await runComponentsPush(ctx, options, configPath, projectConfig);
   } else {
     await runNonComponentsPush(ctx, options, configPath, projectConfig);
@@ -187,7 +187,7 @@ async function startComponentsPushAndCodegen(
   // relatives paths passed to it. It generally doesn't matter for resolving imports,
   // imports are resolved from the file where they are written.
   const absWorkingDir = path.resolve(".");
-  const isComponent = isComponentDirectory(ctx, convexDir, true);
+  const isComponent = await isComponentDirectory(ctx, convexDir, true);
   if (isComponent.kind === "err") {
     return await ctx.crash({
       exitCode: 1,
@@ -319,7 +319,7 @@ async function startComponentsPushAndCodegen(
   };
   if (options.writePushRequest) {
     const pushRequestPath = path.resolve(options.writePushRequest);
-    ctx.fs.writeUtf8File(
+    await ctx.fs.writeUtf8File(
       `${pushRequestPath}.json`,
       JSON.stringify(startPushRequest),
     );

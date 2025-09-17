@@ -80,20 +80,20 @@ async function prepareForCodegen(
   // Delete the old _generated.ts because v0.1.2 used to put the react generated
   // code there
   const legacyCodegenPath = path.join(functionsDir, "_generated.ts");
-  if (ctx.fs.exists(legacyCodegenPath)) {
+  if (await ctx.fs.exists(legacyCodegenPath)) {
     if (opts?.dryRun) {
       logError(
         `Command would delete legacy codegen file: ${legacyCodegenPath}}`,
       );
     } else {
       logError(`Deleting legacy codegen file: ${legacyCodegenPath}}`);
-      ctx.fs.unlink(legacyCodegenPath);
+      await ctx.fs.unlink(legacyCodegenPath);
     }
   }
 
   // Create the codegen dir if it doesn't already exist.
   const codegenDir = path.join(functionsDir, "_generated");
-  ctx.fs.mkdir(codegenDir, { allowExisting: true, recursive: true });
+  await ctx.fs.mkdir(codegenDir, { allowExisting: true, recursive: true });
   return codegenDir;
 }
 
@@ -141,9 +141,9 @@ export async function doCodegen(
     writtenFiles.push(...apiFiles);
 
     // Cleanup any files that weren't written in this run.
-    for (const file of ctx.fs.listDir(codegenDir)) {
+    for (const file of await ctx.fs.listDir(codegenDir)) {
       if (!writtenFiles.includes(file.name)) {
-        recursivelyDelete(ctx, path.join(codegenDir, file.name), opts);
+        await recursivelyDelete(ctx, path.join(codegenDir, file.name), opts);
       }
     }
 
@@ -230,9 +230,9 @@ export async function doInitialComponentCodegen(
   writtenFiles.push(...apiFiles);
 
   // Cleanup any files that weren't written in this run.
-  for (const file of ctx.fs.listDir(codegenDir)) {
+  for (const file of await ctx.fs.listDir(codegenDir)) {
     if (!writtenFiles.includes(file.name)) {
-      recursivelyDelete(ctx, path.join(codegenDir, file.name), opts);
+      await recursivelyDelete(ctx, path.join(codegenDir, file.name), opts);
     }
   }
 }
@@ -259,11 +259,11 @@ export async function doFinalComponentCodegen(
   }
 
   const codegenDir = path.join(componentDirectory.path, "_generated");
-  ctx.fs.mkdir(codegenDir, { allowExisting: true, recursive: true });
+  await ctx.fs.mkdir(codegenDir, { allowExisting: true, recursive: true });
 
   // `dataModel.d.ts`, `server.d.ts` and `api.d.ts` depend on analyze results, where we
   // replace the stub generated during initial codegen with a more precise type.
-  const hasSchemaFile = schemaFileExists(ctx, componentDirectory.path);
+  const hasSchemaFile = await schemaFileExists(ctx, componentDirectory.path);
   let dataModelContents: string;
   if (hasSchemaFile) {
     if (projectConfig.codegen.staticDataModel) {
@@ -338,7 +338,7 @@ async function doReadmeCodegen(
   opts?: { dryRun?: boolean; debug?: boolean },
 ) {
   const readmePath = path.join(functionsDir, "README.md");
-  if (skipIfExists && ctx.fs.exists(readmePath)) {
+  if (skipIfExists && await ctx.fs.exists(readmePath)) {
     logVerbose(`Not overwriting README.md.`);
     return;
   }
@@ -360,7 +360,7 @@ async function doTsconfigCodegen(
   opts?: { dryRun?: boolean; debug?: boolean },
 ) {
   const tsconfigPath = path.join(functionsDir, "tsconfig.json");
-  if (skipIfExists && ctx.fs.exists(tsconfigPath)) {
+  if (skipIfExists && await ctx.fs.exists(tsconfigPath)) {
     logVerbose(`Not overwriting tsconfig.json.`);
     return;
   }
@@ -374,12 +374,12 @@ async function doTsconfigCodegen(
   );
 }
 
-function schemaFileExists(ctx: Context, functionsDir: string) {
+async function schemaFileExists(ctx: Context, functionsDir: string) {
   let schemaPath = path.join(functionsDir, "schema.ts");
-  let hasSchemaFile = ctx.fs.exists(schemaPath);
+  let hasSchemaFile = await ctx.fs.exists(schemaPath);
   if (!hasSchemaFile) {
     schemaPath = path.join(functionsDir, "schema.js");
-    hasSchemaFile = ctx.fs.exists(schemaPath);
+    hasSchemaFile = await ctx.fs.exists(schemaPath);
   }
   return hasSchemaFile;
 }
@@ -391,7 +391,7 @@ async function doDataModelCodegen(
   codegenDir: string,
   opts?: { dryRun?: boolean; debug?: boolean },
 ) {
-  const hasSchemaFile = schemaFileExists(ctx, functionsDir);
+  const hasSchemaFile = await schemaFileExists(ctx, functionsDir);
   const schemaContent = hasSchemaFile
     ? dynamicDataModelDTS()
     : noSchemaDataModelDTS();
@@ -454,7 +454,7 @@ async function doInitialComponentServerCodegen(
   // Don't write our stub if the file already exists: It probably
   // has better type information than this stub.
   const serverDTSPath = path.join(codegenDir, "server.d.ts");
-  if (!ctx.fs.exists(serverDTSPath)) {
+  if (!await ctx.fs.exists(serverDTSPath)) {
     await writeFormattedFile(
       ctx,
       tmpDir,
@@ -475,7 +475,7 @@ async function doInitialComponentDataModelCodegen(
   codegenDir: string,
   opts?: { dryRun?: boolean; debug?: boolean },
 ) {
-  const hasSchemaFile = schemaFileExists(ctx, componentDirectory.path);
+  const hasSchemaFile = await schemaFileExists(ctx, componentDirectory.path);
   const dataModelContext = hasSchemaFile
     ? dynamicDataModelDTS()
     : noSchemaDataModelDTS();
@@ -483,7 +483,7 @@ async function doInitialComponentDataModelCodegen(
 
   // Don't write our stub if the file already exists, since it may have
   // better type information from `doFinalComponentDataModelCodegen`.
-  if (!ctx.fs.exists(dataModelPath)) {
+  if (!await ctx.fs.exists(dataModelPath)) {
     await writeFormattedFile(
       ctx,
       tmpDir,
@@ -517,7 +517,7 @@ async function doInitialComponentApiCodegen(
   // Don't write the `.d.ts` stub if it already exists.
   const apiDTSPath = path.join(codegenDir, "api.d.ts");
   const apiStubDTS = componentApiStubDTS();
-  if (!ctx.fs.exists(apiDTSPath)) {
+  if (!await ctx.fs.exists(apiDTSPath)) {
     await writeFormattedFile(
       ctx,
       tmpDir,
@@ -542,7 +542,7 @@ async function doInitialComponentApiCodegen(
     );
 
     const cjsStubPath = path.join(codegenDir, "api_cjs.d.cts");
-    if (!ctx.fs.exists(cjsStubPath)) {
+    if (!await ctx.fs.exists(cjsStubPath)) {
       await writeFormattedFile(
         ctx,
         tmpDir,
@@ -639,7 +639,7 @@ async function writeFormattedFile(
     return;
   }
   try {
-    const existing = ctx.fs.readUtf8File(destination);
+    const existing = await ctx.fs.readUtf8File(destination);
     if (existing === formattedContents) {
       return;
     }
@@ -654,5 +654,5 @@ async function writeFormattedFile(
     return;
   }
   const tmpPath = tmpDir.writeUtf8File(formattedContents);
-  ctx.fs.swapTmpFile(tmpPath, destination);
+  await ctx.fs.swapTmpFile(tmpPath, destination);
 }

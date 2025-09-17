@@ -87,6 +87,28 @@ export interface Filesystem {
   invalidate(): void;
 }
 
+export interface AsyncFilesystem {
+  listDir(dirPath: string): Promise<Dirent[]>;
+  exists(path: string): Promise<boolean>;
+  stat(path: string): Promise<Stats>;
+  readUtf8File(path: string): Promise<string>;
+  createReadStream(
+    path: string,
+    options: { highWaterMark?: number },
+  ): ReadStream;
+  access(path: string): Promise<void>;
+  writeUtf8File(path: string, contents: string, mode?: Mode): Promise<void>;
+  mkdir(
+    dirPath: string,
+    options?: { allowExisting?: boolean; recursive?: boolean },
+  ): Promise<void>;
+  rmdir(path: string): Promise<void>;
+  unlink(path: string): Promise<void>;
+  swapTmpFile(fromPath: TempPath, toPath: string): Promise<void>;
+  registerPath(path: string, st: Stats | null): void;
+  invalidate(): void;
+}
+
 export type TempPath = string & { __tempPath: "tempPath" };
 
 export interface TempDir {
@@ -238,6 +260,169 @@ export class NodeFs implements Filesystem {
   }
 }
 export const nodeFs = new NodeFs();
+
+export class UnifiedNodeFs implements Filesystem {
+  // Sync methods
+  listDir(dirPath: string): Dirent[] {
+    return stdFs.readdirSync(dirPath, { withFileTypes: true });
+  }
+  exists(path: string): boolean {
+    try {
+      stdFs.statSync(path);
+      return true;
+    } catch (e: any) {
+      if (e.code === "ENOENT") return false;
+      throw e;
+    }
+  }
+  stat(path: string): Stats {
+    return stdFs.statSync(path);
+  }
+  readUtf8File(path: string): string {
+    return stdFs.readFileSync(path, { encoding: "utf-8" });
+  }
+  createReadStream(path: string, options: { highWaterMark?: number }): ReadStream {
+    return stdFs.createReadStream(path, options);
+  }
+  access(path: string): void {
+    return stdFs.accessSync(path);
+  }
+  writeUtf8File(path: string, contents: string, mode?: Mode): void {
+    const fd = stdFs.openSync(path, "w", mode);
+    try {
+      stdFs.writeFileSync(fd, contents, { encoding: "utf-8" });
+      stdFs.fsyncSync(fd);
+    } finally {
+      stdFs.closeSync(fd);
+    }
+  }
+  mkdir(dirPath: string, options?: { allowExisting?: boolean; recursive?: boolean }): void {
+    try {
+      stdFs.mkdirSync(dirPath, { recursive: options?.recursive });
+    } catch (e: any) {
+      if (options?.allowExisting && e.code === "EEXIST") return;
+      throw e;
+    }
+  }
+  rmdir(path: string): void {
+    stdFs.rmdirSync(path);
+  }
+  unlink(path: string): void {
+    return stdFs.unlinkSync(path);
+  }
+  swapTmpFile(fromPath: TempPath, toPath: string): void {
+    try {
+      return stdFs.renameSync(fromPath, toPath);
+    } catch (e: any) {
+      if (e.code === "EXDEV") {
+        warnCrossFilesystem(toPath);
+        stdFs.copyFileSync(fromPath, toPath);
+        return;
+      }
+      throw e;
+    }
+  }
+  registerPath(_path: string, _st: Stats | null): void {
+    // No tracking for unified filesystem
+  }
+  invalidate(): void {
+    // No tracking for unified filesystem
+  }
+}
+
+export const unifiedNodeFs = new UnifiedNodeFs();
+
+export class AsyncNodeFs implements AsyncFilesystem {
+  async listDir(dirPath: string): Promise<Dirent[]> {
+    return fsPromises.readdir(dirPath, { withFileTypes: true });
+  }
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      await fsPromises.stat(path);
+      return true;
+    } catch (e: any) {
+      if (e.code === "ENOENT") {
+        return false;
+      }
+      throw e;
+    }
+  }
+
+  async stat(path: string): Promise<Stats> {
+    return fsPromises.stat(path);
+  }
+
+  async readUtf8File(path: string): Promise<string> {
+    return fsPromises.readFile(path, { encoding: "utf-8" });
+  }
+
+  createReadStream(
+    path: string,
+    options: { highWaterMark?: number },
+  ): ReadStream {
+    return stdFs.createReadStream(path, options);
+  }
+
+  async access(path: string): Promise<void> {
+    return fsPromises.access(path);
+  }
+
+  async writeUtf8File(path: string, contents: string, mode?: Mode): Promise<void> {
+    const handle = await fsPromises.open(path, "w", mode);
+    try {
+      await handle.writeFile(contents, { encoding: "utf-8" });
+      await handle.datasync();
+    } finally {
+      await handle.close();
+    }
+  }
+
+  async mkdir(
+    dirPath: string,
+    options?: { allowExisting?: boolean; recursive?: boolean },
+  ): Promise<void> {
+    try {
+      await fsPromises.mkdir(dirPath, { recursive: options?.recursive });
+    } catch (e: any) {
+      if (options?.allowExisting && e.code === "EEXIST") {
+        return;
+      }
+      throw e;
+    }
+  }
+
+  async rmdir(path: string): Promise<void> {
+    await fsPromises.rmdir(path);
+  }
+
+  async unlink(path: string): Promise<void> {
+    return fsPromises.unlink(path);
+  }
+
+  async swapTmpFile(fromPath: TempPath, toPath: string): Promise<void> {
+    try {
+      return await fsPromises.rename(fromPath, toPath);
+    } catch (e: any) {
+      if (e.code === "EXDEV") {
+        warnCrossFilesystem(toPath);
+        await fsPromises.copyFile(fromPath, toPath);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  registerPath(_path: string, _st: Stats | null): void {
+    // The async node filesystem doesn't track reads
+  }
+
+  invalidate(): void {
+    // We don't track invalidations for the async node filesystem either
+  }
+}
+
+export const asyncNodeFs = new AsyncNodeFs();
 
 // Filesystem implementation that records all paths observed. This is useful
 // for implementing continuous watch commands that need to manage a filesystem
@@ -551,6 +736,217 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
     }
   }
   return true;
+}
+
+export class AsyncRecordingFs implements AsyncFilesystem {
+  private observedDirectories: Map<string, Set<string>> = new Map();
+  private observedFiles: Map<string, Stats | null> = new Map();
+  private invalidated = false;
+  private traceEvents: boolean;
+
+  constructor(traceEvents: boolean) {
+    this.traceEvents = traceEvents;
+  }
+
+  async listDir(dirPath: string): Promise<Dirent[]> {
+    const absDirPath = path.resolve(dirPath);
+    const dirSt = await asyncNodeFs.stat(absDirPath);
+    this.registerNormalized(absDirPath, dirSt);
+
+    const entries = await asyncNodeFs.listDir(dirPath);
+    for (const entry of entries) {
+      const childPath = path.join(absDirPath, entry.name);
+      const childSt = await asyncNodeFs.stat(childPath);
+      this.registerPath(childPath, childSt);
+    }
+
+    const observedNames = new Set(entries.map((e) => e.name));
+    const existingNames = this.observedDirectories.get(absDirPath);
+    if (existingNames) {
+      if (!setsEqual(observedNames, existingNames)) {
+        if (this.traceEvents) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "Invalidating due to directory children mismatch",
+            observedNames,
+            existingNames,
+          );
+        }
+        this.invalidated = true;
+      }
+    }
+    this.observedDirectories.set(absDirPath, observedNames);
+    return entries;
+  }
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      const st = await asyncNodeFs.stat(path);
+      this.registerPath(path, st);
+      return true;
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        this.registerPath(path, null);
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  async stat(path: string): Promise<Stats> {
+    try {
+      const st = await asyncNodeFs.stat(path);
+      this.registerPath(path, st);
+      return st;
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        this.registerPath(path, null);
+      }
+      throw err;
+    }
+  }
+
+  async readUtf8File(path: string): Promise<string> {
+    try {
+      const st = await asyncNodeFs.stat(path);
+      this.registerPath(path, st);
+      return await asyncNodeFs.readUtf8File(path);
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        this.registerPath(path, null);
+      }
+      throw err;
+    }
+  }
+
+  createReadStream(
+    path: string,
+    options: { highWaterMark?: number },
+  ): ReadStream {
+    try {
+      const st = nodeFs.stat(path);
+      this.registerPath(path, st);
+      return asyncNodeFs.createReadStream(path, options);
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        this.registerPath(path, null);
+      }
+      throw err;
+    }
+  }
+
+  async access(path: string): Promise<void> {
+    try {
+      const st = await asyncNodeFs.stat(path);
+      this.registerPath(path, st);
+      return await asyncNodeFs.access(path);
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        this.registerPath(path, null);
+      }
+      throw err;
+    }
+  }
+
+  async writeUtf8File(filePath: string, contents: string, mode?: Mode): Promise<void> {
+    const absPath = path.resolve(filePath);
+    await asyncNodeFs.writeUtf8File(filePath, contents, mode);
+    await this.updateOnWrite(absPath);
+  }
+
+  async mkdir(
+    dirPath: string,
+    options?: { allowExisting?: boolean; recursive?: boolean },
+  ): Promise<void> {
+    const absPath = path.resolve(dirPath);
+    try {
+      await fsPromises.mkdir(absPath, { recursive: options?.recursive });
+    } catch (e: any) {
+      if (options?.allowExisting && e.code === "EEXIST") {
+        const st = await asyncNodeFs.stat(absPath);
+        this.registerNormalized(absPath, st);
+        return;
+      }
+      throw e;
+    }
+    await this.updateOnWrite(absPath);
+  }
+
+  async rmdir(dirPath: string): Promise<void> {
+    const absPath = path.resolve(dirPath);
+    await fsPromises.rmdir(absPath);
+    this.updateOnDelete(absPath);
+  }
+
+  async unlink(filePath: string): Promise<void> {
+    const absPath = path.resolve(filePath);
+    await fsPromises.unlink(absPath);
+    this.updateOnDelete(absPath);
+  }
+
+  async swapTmpFile(fromPath: TempPath, toPath: string): Promise<void> {
+    const absToPath = path.resolve(toPath);
+    await asyncNodeFs.swapTmpFile(fromPath, absToPath);
+    await this.updateOnWrite(absToPath);
+  }
+
+  private async updateOnWrite(absPath: string): Promise<void> {
+    const newSt = await asyncNodeFs.stat(absPath);
+    this.observedFiles.set(absPath, newSt);
+
+    const parentPath = path.resolve(path.dirname(absPath));
+    const observedParent = this.observedDirectories.get(parentPath);
+    if (observedParent !== undefined) {
+      observedParent.add(path.basename(absPath));
+    }
+  }
+
+  private updateOnDelete(absPath: string): void {
+    this.observedFiles.set(absPath, null);
+
+    const parentPath = path.resolve(path.dirname(absPath));
+    const observedParent = this.observedDirectories.get(parentPath);
+    if (observedParent !== undefined) {
+      observedParent.delete(path.basename(absPath));
+    }
+  }
+
+  registerPath(p: string, st: Stats | null): void {
+    const absPath = path.resolve(p);
+    this.registerNormalized(absPath, st);
+  }
+
+  invalidate(): void {
+    this.invalidated = true;
+  }
+
+  private registerNormalized(absPath: string, observed: Stats | null): void {
+    const existing = this.observedFiles.get(absPath);
+    if (existing !== undefined) {
+      const stMatch = stMatches(observed, existing);
+      if (!stMatch.matches) {
+        if (this.traceEvents) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "Invalidating due to st mismatch",
+            absPath,
+            observed,
+            existing,
+            stMatch.reason,
+          );
+        }
+        this.invalidated = true;
+      }
+    }
+    this.observedFiles.set(absPath, observed);
+  }
+
+  finalize(): Observations | "invalidated" {
+    if (this.invalidated) {
+      return "invalidated";
+    }
+    return new Observations(this.observedDirectories, this.observedFiles);
+  }
 }
 
 export function stMatches(

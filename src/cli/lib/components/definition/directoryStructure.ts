@@ -52,17 +52,18 @@ export function qualifiedDefinitionPath(
 }
 
 // NB: The process cwd will be used to resolve the directory specified in the constructor.
-export function isComponentDirectory(
+export async function isComponentDirectory(
   ctx: Context,
   directory: string,
   isRoot: boolean,
-):
+): Promise<
   | { kind: "ok"; component: ComponentDirectory }
-  | { kind: "err"; why: string } {
-  if (!ctx.fs.exists(directory)) {
+  | { kind: "err"; why: string }
+> {
+  if (!await ctx.fs.exists(directory)) {
     return { kind: "err", why: `Directory doesn't exist` };
   }
-  const dirStat = ctx.fs.stat(directory);
+  const dirStat = await ctx.fs.stat(directory);
   if (!dirStat.isDirectory()) {
     return { kind: "err", why: `Not a directory` };
   }
@@ -70,17 +71,17 @@ export function isComponentDirectory(
   // Check that we have a definition file, defaulting to `.ts` but falling back to `.js`.
   let filename = DEFINITION_FILENAME_TS;
   let definitionPath = path.resolve(path.join(directory, filename));
-  if (!ctx.fs.exists(definitionPath)) {
+  if (!await ctx.fs.exists(definitionPath)) {
     filename = DEFINITION_FILENAME_JS;
     definitionPath = path.resolve(path.join(directory, filename));
   }
-  if (!ctx.fs.exists(definitionPath)) {
+  if (!await ctx.fs.exists(definitionPath)) {
     return {
       kind: "err",
       why: `Directory doesn't contain a ${filename} file`,
     };
   }
-  const definitionStat = ctx.fs.stat(definitionPath);
+  const definitionStat = await ctx.fs.stat(definitionPath);
   if (!definitionStat.isFile()) {
     return {
       kind: "err",
@@ -103,7 +104,7 @@ export async function buildComponentDirectory(
 ): Promise<ComponentDirectory> {
   const convexDir = path.resolve(await getFunctionsDirectoryPath(ctx));
   const isRoot = path.dirname(path.resolve(definitionPath)) === convexDir;
-  const isComponent = isComponentDirectory(
+  const isComponent = await isComponentDirectory(
     ctx,
     path.dirname(definitionPath),
     isRoot,
